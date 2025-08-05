@@ -4479,6 +4479,76 @@
             }
         }
         modules_flsModules.watcher = new ScrollWatcher({});
+        class parallax_Parallax {
+            constructor(elements) {
+                if (elements.length) this.elements = Array.from(elements).map((el => new parallax_Parallax.Each(el, this.options)));
+            }
+            destroyEvents() {
+                this.elements.forEach((el => {
+                    el.destroyEvents();
+                }));
+            }
+            setEvents() {
+                this.elements.forEach((el => {
+                    el.setEvents();
+                }));
+            }
+        }
+        parallax_Parallax.Each = class {
+            constructor(parent) {
+                this.parent = parent;
+                this.elements = this.parent.querySelectorAll("[data-prlx]");
+                this.animation = this.animationFrame.bind(this);
+                this.offset = 0;
+                this.value = 0;
+                this.smooth = parent.dataset.prlxSmooth ? Number(parent.dataset.prlxSmooth) : 15;
+                this.setEvents();
+            }
+            setEvents() {
+                this.animationID = window.requestAnimationFrame(this.animation);
+            }
+            destroyEvents() {
+                window.cancelAnimationFrame(this.animationID);
+            }
+            animationFrame() {
+                const topToWindow = this.parent.getBoundingClientRect().top;
+                const heightParent = this.parent.offsetHeight;
+                const heightWindow = window.innerHeight;
+                const positionParent = {
+                    top: topToWindow - heightWindow,
+                    bottom: topToWindow + heightParent
+                };
+                const centerPoint = this.parent.dataset.prlxCenter ? this.parent.dataset.prlxCenter : "center";
+                if (positionParent.top < 30 && positionParent.bottom > -30) switch (centerPoint) {
+                  case "top":
+                    this.offset = -1 * topToWindow;
+                    break;
+
+                  case "center":
+                    this.offset = heightWindow / 2 - (topToWindow + heightParent / 2);
+                    break;
+
+                  case "bottom":
+                    this.offset = heightWindow - (topToWindow + heightParent);
+                    break;
+                }
+                this.value += (this.offset - this.value) / this.smooth;
+                this.animationID = window.requestAnimationFrame(this.animation);
+                this.elements.forEach((el => {
+                    const parameters = {
+                        axis: el.dataset.axis ? el.dataset.axis : "v",
+                        direction: el.dataset.direction ? el.dataset.direction + "1" : "-1",
+                        coefficient: el.dataset.coefficient ? Number(el.dataset.coefficient) : 5,
+                        additionalProperties: el.dataset.properties ? el.dataset.properties : ""
+                    };
+                    this.parameters(el, parameters);
+                }));
+            }
+            parameters(el, parameters) {
+                if (parameters.axis == "v") el.style.transform = `translate3D(0, ${(parameters.direction * (this.value / parameters.coefficient)).toFixed(2)}px,0) ${parameters.additionalProperties}`; else if (parameters.axis == "h") el.style.transform = `translate3D(${(parameters.direction * (this.value / parameters.coefficient)).toFixed(2)}px,0,0) ${parameters.additionalProperties}`;
+            }
+        };
+        if (document.querySelectorAll("[data-prlx-parent]")) modules_flsModules.parallax = new parallax_Parallax(document.querySelectorAll("[data-prlx-parent]"));
         let addWindowScrollEvent = false;
         function pageNavigation() {
             document.addEventListener("click", pageNavigationAction);
@@ -4525,6 +4595,32 @@
                 goToHash ? gotoblock_gotoBlock(goToHash, true, 500, 20) : null;
             }
         }
+        function headerScroll() {
+            addWindowScrollEvent = true;
+            const header = document.querySelector("header.header");
+            const headerShow = header.hasAttribute("data-scroll-show");
+            const headerShowTimer = header.dataset.scrollShow ? header.dataset.scrollShow : 500;
+            const startPoint = header.dataset.scroll ? header.dataset.scroll : 1;
+            let scrollDirection = 0;
+            let timer;
+            document.addEventListener("windowScroll", (function(e) {
+                const scrollTop = window.scrollY;
+                clearTimeout(timer);
+                if (scrollTop >= startPoint) {
+                    !header.classList.contains("_header-scroll") ? header.classList.add("_header-scroll") : null;
+                    if (headerShow) {
+                        if (scrollTop > scrollDirection) header.classList.contains("_header-show") ? header.classList.remove("_header-show") : null; else !header.classList.contains("_header-show") ? header.classList.add("_header-show") : null;
+                        timer = setTimeout((() => {
+                            !header.classList.contains("_header-show") ? header.classList.add("_header-show") : null;
+                        }), headerShowTimer);
+                    }
+                } else {
+                    header.classList.contains("_header-scroll") ? header.classList.remove("_header-scroll") : null;
+                    if (headerShow) header.classList.contains("_header-show") ? header.classList.remove("_header-show") : null;
+                }
+                scrollDirection = scrollTop <= 0 ? 0 : scrollTop;
+            }));
+        }
         setTimeout((() => {
             if (addWindowScrollEvent) {
                 let windowScroll = new Event("windowScroll");
@@ -4537,5 +4633,6 @@
         menuInit();
         formRating();
         pageNavigation();
+        headerScroll();
     })();
 })();

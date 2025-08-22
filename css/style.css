@@ -98,7 +98,8 @@ h6 {
   font-size: inherit
 }
 body {
-  background-color: #1a1a1a
+  background-color: #1a1a1a;
+  overflow-x: hidden
 }
 .lock body {
   overflow: hidden;
